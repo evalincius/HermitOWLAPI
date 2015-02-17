@@ -15,9 +15,6 @@ import org.semanticweb.owlapi.reasoner.structural.StructuralReasonerFactory;
 
 
 
-
-
-
 import de.derivo.sparqldlapi.Query;
 import de.derivo.sparqldlapi.QueryEngine;
 import de.derivo.sparqldlapi.QueryResult;
@@ -38,7 +35,8 @@ public class MainActivity extends ActionBarActivity  {
 		    @Override
 		    public void run() {
 		        try {
-		        	IRI ontIRI = IRI.create("http://protege.stanford.edu/ontologies/pizza/pizza.owl");
+		        	File file = new File("storage/emulated/0/Download/full-lubm.owl");
+		        	IRI ontIRI = IRI.create(file);
 		    		OWLOntologyManager ontManager = OWLManager.createOWLOntologyManager();
 		    		OWLOntology ont = null;
 		    		try {
@@ -48,15 +46,20 @@ public class MainActivity extends ActionBarActivity  {
 		    			e.printStackTrace();
 		    		}
 		    		if(ont!=null){
-		    			System.out.println("---------->  WORKS <-------------");
 		    		OWLReasoner r = new StructuralReasonerFactory().createReasoner(ont);
 		    		OWLReasoner hermit = new Reasoner.ReasonerFactory().createReasoner(ont);
 		    		
 		    		 try {
 		    		        QueryEngine queryEng = QueryEngine.create(ontManager, hermit);
-		    		        Query query = Query.create("SELECT ?c WHERE { Class(?c) }");
+		    		        Query query = Query.create("");
+			    			System.out.println("---------->  Executing Query <-------------");
+
 		    		        QueryResult result = queryEng.execute(query);
-		    		        System.out.println(result.toString());
+			    			System.out.println("---------->  WORKS <-------------");
+		    		        System.out.println( result.toString());
+			    			System.out.println("---------->  WORKS <-------------");
+			    			
+
 
 		    		    } catch (QueryParserException ex) {
 		    		        //return ex.getMessage();
