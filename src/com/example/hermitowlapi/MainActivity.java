@@ -38,8 +38,9 @@ public class MainActivity extends ActionBarActivity  {
 		    @Override
 		    public void run() {
 		        try {
-		        	IRI ontIRI = IRI.create("http://protege.stanford.edu/ontologies/pizza/pizza.owl");
-		    		OWLOntologyManager ontManager = OWLManager.createOWLOntologyManager();
+		        	File file = new File("storage/emulated/0/Download/pizza.owl");
+		        	IRI ontIRI = IRI.create(file);
+		        	OWLOntologyManager ontManager = OWLManager.createOWLOntologyManager();
 		    		OWLOntology ont = null;
 		    		try {
 		    			ont = ontManager.loadOntologyFromOntologyDocument(ontIRI);
@@ -54,7 +55,13 @@ public class MainActivity extends ActionBarActivity  {
 		    		
 		    		 try {
 		    		        QueryEngine queryEng = QueryEngine.create(ontManager, hermit);
-		    		        Query query = Query.create("SELECT ?c WHERE { Class(?c) }");
+		    		        Query query = Query.create(
+		    		        		 "SELECT ?X WHERE { "
+		    		        				 + "Type(?X, <http://www.co-ode.org/ontologies/pizza/pizza.owl#Country>)"
+		    		        		//+ " Type(?X, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#Person>), PropertyValue(?X, ?Y, <http://www.Department0.University0.edu>), SubPropertyOf(?Y, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#memberOf>)"
+		    		        		+ "}");
+		    		        //"Type(?X, http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#Person), PropertyValue(?X, ?Y, http://www.Department0.University0.edu), SubPropertyOf(?Y, http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#memberOf)"
+		    		        
 		    		        QueryResult result = queryEng.execute(query);
 		    		        System.out.println(result.toString());
 
