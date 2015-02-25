@@ -1,22 +1,17 @@
 package com.example.hermitowlapi;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Set;
 
 import org.semanticweb.HermiT.Reasoner;
 import org.semanticweb.owlapi.apibinding.OWLManager;
-import org.semanticweb.owlapi.model.IRI;
-import org.semanticweb.owlapi.model.OWLOntology;
-import org.semanticweb.owlapi.model.OWLOntologyCreationException;
-import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.reasoner.InferenceType;
 import org.semanticweb.owlapi.reasoner.OWLReasoner;
+import org.semanticweb.owlapi.reasoner.OWLReasonerRuntimeException;
 import org.semanticweb.owlapi.reasoner.structural.StructuralReasonerFactory;
-
-
-
-
-
-
-
 
 import de.derivo.sparqldlapi.Query;
 import de.derivo.sparqldlapi.QueryEngine;
@@ -37,43 +32,69 @@ public class MainActivity extends ActionBarActivity  {
 		Thread thread = new Thread(new Runnable(){
 		    @Override
 		    public void run() {
+		    	/**InputStream in = null;
+				try {
+					in = getAssets().open("full-lubm.owl");
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}*/
 		        try {
-		        	File file = new File("storage/emulated/0/Download/pizza.owl");
-		        	IRI ontIRI = IRI.create(file);
+    		        OWLReasoner hermit = null;
+
+		        	File file = new File("storage/emulated/0/Download/lubm.owl");
+		        	//IRI ontIRI = IRI.create(file);
 		        	OWLOntologyManager ontManager = OWLManager.createOWLOntologyManager();
 		    		OWLOntology ont = null;
-		    		try {
-		    			ont = ontManager.loadOntologyFromOntologyDocument(ontIRI);
+					try {
+		    			ont = ontManager.loadOntologyFromOntologyDocument(IRI.create(file));
+		    			
+		    			StructuralReasonerFactory factory = new StructuralReasonerFactory();
+		    			hermit = factory.createReasoner(ont);
+		    			hermit.precomputeInferences(InferenceType.CLASS_ASSERTIONS,InferenceType.OBJECT_PROPERTY_ASSERTIONS);
+		    			
 		    		} catch (OWLOntologyCreationException e) {
 		    			// TODO Auto-generated catch block
 		    			e.printStackTrace();
 		    		}
 		    		if(ont!=null){
 		    			System.out.println("---------->  WORKS <-------------");
-		    		OWLReasoner r = new StructuralReasonerFactory().createReasoner(ont);
-		    		OWLReasoner hermit = new Reasoner.ReasonerFactory().createReasoner(ont);
+		    			try {
+		    		//OWLReasoner r = new StructuralReasonerFactory().createReasoner(ont);
+		    		 //hermit = new Reasoner.ReasonerFactory().createReasoner(ont);
+		    			} catch (OWLReasonerRuntimeException e) {
+			    			// TODO Auto-generated catch block
+			    			e.printStackTrace();
+			    		}
 		    		
-		    		 try {
-		    		        QueryEngine queryEng = QueryEngine.create(ontManager, hermit);
-		    		        Query query = Query.create(
-		    		        		 "SELECT ?X WHERE { "
-		    		        				 + "Type(?X, <http://www.co-ode.org/ontologies/pizza/pizza.owl#Country>)"
-		    		        		//+ " Type(?X, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#Person>), PropertyValue(?X, ?Y, <http://www.Department0.University0.edu>), SubPropertyOf(?Y, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#memberOf>)"
-		    		        		+ "}");
-		    		        //"Type(?X, http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#Person), PropertyValue(?X, ?Y, http://www.Department0.University0.edu), SubPropertyOf(?Y, http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#memberOf)"
-		    		        
-		    		        QueryResult result = queryEng.execute(query);
-		    		        System.out.println(result.toString());
+		    			 try {
+			    		        QueryEngine queryEng = QueryEngine.create(ontManager, hermit);
+			    		        Query query = Query.create(
+			    		        		 "SELECT ?X WHERE { "
+			    		        		//+ "Class(?X)"		
+			    		        		 + "Type(?X, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#GraduateStudent>), PropertyValue(?X, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#takesCourse>, <http://www.Department0.University0.edu/GraduateCourse0>)"
+			    		        		//+ " Type(?X, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#Person>), PropertyValue(?X, ?Y, <http://www.Department0.University0.edu>), SubPropertyOf(?Y, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#memberOf>)"
+			    		        		+ "}");
+			    		        //"Type(?X, http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#Person), PropertyValue(?X, ?Y, http://www.Department0.University0.edu), SubPropertyOf(?Y, http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#memberOf)"
+			    		        
+				    			System.out.println("---------->  Executing Query <-------------");
 
-		    		    } catch (QueryParserException ex) {
-		    		        //return ex.getMessage();
+			    		        QueryResult result = queryEng.execute(query);
+				    			System.out.println("---------->  WORKS <-------------");
+			    		        System.out.println( result);
+				    			System.out.println("---------->  WORKS <-------------");
+				    			
 
-		    		    } catch (QueryEngineException ex) {
-		    		        ex.getMessage();
-		    		    }
-		    		
-		    		
-		    		
+
+			    		    } catch (QueryParserException ex) {
+			    		        //return ex.getMessage();
+
+			    		    } catch (QueryEngineException ex) {
+			    		        ex.getMessage();
+			    		    }
+			    		
+			    		
+			    		
 		    		}else{
 		    			
 		    			System.out.println("---------->  DOESN'T WORK <-------------");
