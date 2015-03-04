@@ -20,7 +20,6 @@ import de.derivo.sparqldlapi.QueryEngine;
 import de.derivo.sparqldlapi.QueryResult;
 import de.derivo.sparqldlapi.exceptions.QueryEngineException;
 import de.derivo.sparqldlapi.exceptions.QueryParserException;
-
 import android.support.v7.app.ActionBarActivity;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
@@ -42,6 +41,8 @@ public class MainActivity extends ActionBarActivity  {
 	private float drained;
 	private float Reasonerdrained;
 	private BroadcastReceiver batteryInfoReceiver;
+	private String ontologyName;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -54,10 +55,12 @@ public class MainActivity extends ActionBarActivity  {
 		// better yet - use a string resource getString(R.string.your_message)
 		progressDialog.setMessage("Loading data"); 
 		progressDialog.setCanceledOnTouchOutside(false);
-
+		
 		// display dialog
 		progressDialog.show(); 
-		 
+		
+		Intent myIntent = getIntent(); // gets the previously created intent
+		ontologyName = myIntent.getStringExtra("ontologyName"); // will return "ontologyName"
 		 
 		// start async task
 		new MyAsyncTaskClass().execute();   
@@ -97,7 +100,7 @@ public class MainActivity extends ActionBarActivity  {
         	
     		        try {
         		        OWLReasoner hermit = null;
-    		        	File file = new File("storage/emulated/0/Download/a.owl");
+    		        	File file = new File("storage/emulated/0/Download/" +ontologyName);
     		        	//IRI ontIRI = IRI.create(file);
     		        	OWLOntologyManager ontManager = OWLManager.createOWLOntologyManager();
     		    		OWLOntology ont = null;
@@ -140,6 +143,7 @@ public class MainActivity extends ActionBarActivity  {
     						    	Reasonerdrained = drained;
 
     								System.out.println("There was " + Reasonerdrained + "mAh" + " drained");
+    					    		System.out.println("Running : " + ontologyName);
 
     				    			
 
@@ -174,8 +178,8 @@ public class MainActivity extends ActionBarActivity  {
         protected void onPostExecute(Void result) {
             // put here everything that needs to be done after your async task finishes
             progressDialog.dismiss();
-            //stop();
-			//System.exit(0);
+            stop();
+			System.exit(0);
         }
 }
 	
