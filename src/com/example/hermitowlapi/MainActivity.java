@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.semanticweb.HermiT.Reasoner;
 import org.semanticweb.owlapi.apibinding.OWLManager;
@@ -18,9 +20,15 @@ import de.derivo.sparqldlapi.QueryEngine;
 import de.derivo.sparqldlapi.QueryResult;
 import de.derivo.sparqldlapi.exceptions.QueryEngineException;
 import de.derivo.sparqldlapi.exceptions.QueryParserException;
+
 import android.support.v7.app.ActionBarActivity;
 import android.app.ProgressDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.AsyncTask;
+import android.os.BatteryManager;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -28,6 +36,12 @@ import android.widget.TextView;
 
 public class MainActivity extends ActionBarActivity  {
 	private ProgressDialog progressDialog;
+	
+	private Timer timer;
+	private float draw;
+	private float drained;
+	private float Reasonerdrained;
+	private BroadcastReceiver batteryInfoReceiver;
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -39,6 +53,8 @@ public class MainActivity extends ActionBarActivity  {
 		progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER); 
 		// better yet - use a string resource getString(R.string.your_message)
 		progressDialog.setMessage("Loading data"); 
+		progressDialog.setCanceledOnTouchOutside(false);
+
 		// display dialog
 		progressDialog.show(); 
 		 
@@ -81,8 +97,7 @@ public class MainActivity extends ActionBarActivity  {
         	
     		        try {
         		        OWLReasoner hermit = null;
-
-    		        	File file = new File("storage/emulated/0/Download/lubm.owl");
+    		        	File file = new File("storage/emulated/0/Download/a.owl");
     		        	//IRI ontIRI = IRI.create(file);
     		        	OWLOntologyManager ontManager = OWLManager.createOWLOntologyManager();
     		    		OWLOntology ont = null;
@@ -98,7 +113,6 @@ public class MainActivity extends ActionBarActivity  {
     		    			e.printStackTrace();
     		    		}
     		    		if(ont!=null){
-    		    			System.out.println("---------->  WORKS <-------------");
     		    			try {
     		    		//OWLReasoner r = new StructuralReasonerFactory().createReasoner(ont);
     		    		 //hermit = new Reasoner.ReasonerFactory().createReasoner(ont);
@@ -108,24 +122,25 @@ public class MainActivity extends ActionBarActivity  {
     			    		}
     		    		
     		    			 try {
+    		    				 
     			    		        QueryEngine queryEng = QueryEngine.create(ontManager, hermit);
     			    		        Query query = Query.create(
-    			    		        		 "SELECT ?X WHERE { "
+    			    		        		 "SELECT * WHERE { "
+    			    		        		//+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateStudent>)"
     			    		        		//+ "Class(?X)"		
-    			    		        		 + "Type(?X, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#GraduateStudent>), PropertyValue(?X, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#takesCourse>, <http://www.Department0.University0.edu/GraduateCourse0>)"
+    			    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateStudent>), PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse>, <http://www.Department0.University0.edu/GraduateCourse0>)"
+    			    		        		//+"Type(?X, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#GraduateStudent>),PropertyValue(?X,<http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#takesCourse>,<http://www.Department0.University0.edu/GraduateCourse0>)"
     			    		        		//+ " Type(?X, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#Person>), PropertyValue(?X, ?Y, <http://www.Department0.University0.edu>), SubPropertyOf(?Y, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#memberOf>)"
     			    		        		+ "}");
     			    		        //"Type(?X, http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#Person), PropertyValue(?X, ?Y, http://www.Department0.University0.edu), SubPropertyOf(?Y, http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#memberOf)"
     			    		        
-    				    			System.out.println("---------->  Executing Query <-------------");
-
+    				    			start();
     			    		        QueryResult result = queryEng.execute(query);
-    				    			System.out.println("---------->  WORKS <-------------");
     						    	System.out.println( result);
-    						    	//setText(result.toString());
+    						    	Reasonerdrained = drained;
 
-    				    			System.out.println("---------->  WORKS <-------------");
-    				    			System.exit(0);
+    								System.out.println("There was " + Reasonerdrained + "mAh" + " drained");
+
     				    			
 
 
@@ -159,7 +174,63 @@ public class MainActivity extends ActionBarActivity  {
         protected void onPostExecute(Void result) {
             // put here everything that needs to be done after your async task finishes
             progressDialog.dismiss();
+            //stop();
+			//System.exit(0);
         }
+}
+	
+
+public  float bat(){		
+    registerReceiver(this.batteryInfoReceiver,	new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+    batteryInfoReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {			
+			int  plugged= intent.getIntExtra(BatteryManager.EXTRA_PLUGGED,0);
+			String  technology= intent.getExtras().getString(BatteryManager.EXTRA_TECHNOLOGY);
+			int  temperature= intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE,0);
+			int  voltage= intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE,0);				
+			
+			BatteryManager mBatteryManager =
+					(BatteryManager)getSystemService(Context.BATTERY_SERVICE);
+					Long energy =
+					mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);					
+			float currentdraw = energy;
+			draw = currentdraw;		
+			((TextView)findViewById(R.id.textView)).setText("     HERMIT REASONER "+"\n"+"Plugged: "+plugged+"\n"+
+					"Technology: "+technology+"\n"+
+					"Temperature: "+temperature+"\n"+
+					"Voltage: "+voltage+"\n"+
+					"Current mA = " + energy + "mA"+ "\n"+
+					"Hermit reasoner Drained = " + Reasonerdrained + "mA"+ "\n"+
+					"Currentlly Drained = " + drained + "mAh"+ "\n");
+
+		}
+	};
+	return draw;
+}
+
+
+public void start() {
+    if(timer != null) {
+        return;
+    }
+    timer = new Timer();	   
+    timer.schedule(new TimerTask() {
+        public void run() {	            
+           // draw = draw + (bat());
+        	float curret =bat(); 
+        	drained =drained +(curret/7200);
+            		//System.out.println("Current mA = " + curret + "mA"+ "\n"+
+					//"Capacity Drained = " + drained + "mAh"+ "\n");
+					
+    		//batteryInfo=(TextView)findViewById(R.id.textView);
+
+       }
+   }, 0, 500 );
+}
+public void stop() {
+    timer.cancel();
+    timer = null;
 }
 	
 }
