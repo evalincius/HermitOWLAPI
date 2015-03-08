@@ -1,6 +1,10 @@
 package com.example.hermitowlapi;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Set;
@@ -42,6 +46,8 @@ public class MainActivity extends ActionBarActivity  {
 	private float Reasonerdrained;
 	private BroadcastReceiver batteryInfoReceiver;
 	private String ontologyName;
+	private float OntologyLoaderDrained;
+
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -105,6 +111,9 @@ public class MainActivity extends ActionBarActivity  {
     		        	OWLOntologyManager ontManager = OWLManager.createOWLOntologyManager();
     		    		OWLOntology ont = null;
     					try {
+    						
+	    				    start();
+
     		    			ont = ontManager.loadOntologyFromOntologyDocument(IRI.create(file));
     		    			
     		    			StructuralReasonerFactory factory = new StructuralReasonerFactory();
@@ -126,6 +135,7 @@ public class MainActivity extends ActionBarActivity  {
     		    		
     		    			 try {
     		    				 
+
     			    		        QueryEngine queryEng = QueryEngine.create(ontManager, hermit);
     			    		        Query query = Query.create(
     			    		        		 "SELECT * WHERE { "
@@ -136,14 +146,18 @@ public class MainActivity extends ActionBarActivity  {
     			    		        		//+ " Type(?X, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#Person>), PropertyValue(?X, ?Y, <http://www.Department0.University0.edu>), SubPropertyOf(?Y, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#memberOf>)"
     			    		        		+ "}");
     			    		        //"Type(?X, http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#Person), PropertyValue(?X, ?Y, http://www.Department0.University0.edu), SubPropertyOf(?Y, http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#memberOf)"
-    			    		        
-    				    			start();
+    			    	    		OntologyLoaderDrained = drained;
+
     			    		        QueryResult result = queryEng.execute(query);
     						    	System.out.println( result);
-    						    	Reasonerdrained = drained;
+    					    		Reasonerdrained = drained - OntologyLoaderDrained;
 
-    								System.out.println("There was " + Reasonerdrained + "mAh" + " drained");
+    					    		System.out.println("There was " + OntologyLoaderDrained + "mAh" + " drained by ontology loader");
+    					    		System.out.println("There was " + Reasonerdrained + "mAh" + " drained by reasoner");
     					    		System.out.println("Running : " + ontologyName);
+    					    		write("log", "________________________________________"+ "\n"+"HermiT Reasoner " +Reasonerdrained+"mAh"+"\n"
+    					    		+ "HermiT ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "HermiT Total: " +drained+ "\n"
+    					    		+"HermiT Running : " + ontologyName+"\n________________________");
 
     				    			
 
@@ -179,6 +193,7 @@ public class MainActivity extends ActionBarActivity  {
             // put here everything that needs to be done after your async task finishes
             progressDialog.dismiss();
             stop();
+            finishWithResult();
 			System.exit(0);
         }
 }
@@ -223,18 +238,74 @@ public void start() {
         public void run() {	            
            // draw = draw + (bat());
         	float curret =bat(); 
-        	drained =drained +(curret/7200);
+        	drained =drained +(curret/64000);
             		//System.out.println("Current mA = " + curret + "mA"+ "\n"+
 					//"Capacity Drained = " + drained + "mAh"+ "\n");
 					
     		//batteryInfo=(TextView)findViewById(R.id.textView);
 
        }
-   }, 0, 500 );
+   }, 0, 50 );
 }
 public void stop() {
     timer.cancel();
     timer = null;
 }
 	
+//File writter
+	public void write(String fname, String fcontent){
+      String filename= "storage/emulated/0/Download/"+fname+".txt";
+      String temp = read(fname);
+      BufferedWriter writer = null;
+      try {
+          //create a temporary file
+          File logFile = new File(filename);
+
+          // This will output the full path where the file will be written to...
+          System.out.println(logFile.getCanonicalPath());
+
+          writer = new BufferedWriter(new FileWriter(logFile));
+          
+          writer.write(temp + fcontent );
+      } catch (Exception e) {
+          e.printStackTrace();
+      } finally {
+          try {
+              // Close the writer regardless of what happens...
+              writer.close();
+          } catch (Exception e) {
+          }
+      }
+ }
+	
+	//File reader
+	   public String read(String fname){
+	     BufferedReader br = null;
+	     String response = null;
+	      try {
+	        StringBuffer output = new StringBuffer();
+	        String fpath = "storage/emulated/0/Download/"+fname+".txt";
+	        br = new BufferedReader(new FileReader(fpath));
+	        String line = "";
+	        while ((line = br.readLine()) != null) {
+	          output.append(line +"\n");
+	        }
+	        response = output.toString();
+	      } catch (IOException e) {
+	        e.printStackTrace();
+	        return null;
+	      }
+	      return response;
+	   }
+	   
+	   private void finishWithResult()
+	   {
+	      Bundle conData = new Bundle();
+	      conData.putInt("results", 1);
+	      Intent intent = new Intent();
+	      intent.putExtras(conData);
+	      setResult(RESULT_OK, intent);
+	      finish();
+	   }
+
 }
