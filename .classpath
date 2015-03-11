@@ -5,7 +5,6 @@
 	<classpathentry kind="con" path="com.android.ide.eclipse.adt.ANDROID_FRAMEWORK"/>
 	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.LIBRARIES"/>
 	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.DEPENDENCIES"/>
-	<classpathentry exported="true" kind="lib" path="/Users/ed/Desktop/HermitLIB/Hermit3.jar"/>
 	<classpathentry exported="true" kind="lib" path="/Users/ed/Google Drive/workspace/LibrariesForHermit/hermit__automaton-1.11-8-android.jar"/>
 	<classpathentry exported="true" kind="lib" path="/Users/ed/Google Drive/workspace/LibrariesForHermit/hermit__axiom-1.2.8.jar"/>
 	<classpathentry exported="true" kind="lib" path="/Users/ed/Google Drive/workspace/LibrariesForHermit/hermit__jautomata-core-2.0-android.jar"/>
@@ -13,5 +12,6 @@
 	<classpathentry exported="true" kind="lib" path="/Users/ed/Google Drive/workspace/LibrariesForHermit/jpaul-2.5.1.jar"/>
 	<classpathentry exported="true" kind="lib" path="/Users/ed/Google Drive/workspace/LibrariesForHermit/owlapi-distribution-3.4.10.jar"/>
 	<classpathentry exported="true" kind="lib" path="/Users/ed/Google Drive/workspace/LibrariesForHermit/sparqldl-api.jar"/>
+	<classpathentry exported="true" kind="lib" path="/Users/ed/Google Drive/workspace/LibrariesForHermit/Hermit3.jar"/>
 	<classpathentry kind="output" path="bin/classes"/>
 </classpath>
