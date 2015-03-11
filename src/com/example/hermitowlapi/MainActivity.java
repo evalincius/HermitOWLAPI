@@ -6,25 +6,17 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import org.semanticweb.HermiT.Reasoner;
 import org.semanticweb.owlapi.apibinding.OWLManager;
-import org.semanticweb.owlapi.model.*;
-import org.semanticweb.owlapi.reasoner.InferenceType;
-import org.semanticweb.owlapi.reasoner.OWLReasoner;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyCreationException;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.reasoner.OWLReasonerRuntimeException;
-import org.semanticweb.owlapi.reasoner.structural.StructuralReasonerFactory;
 
-import de.derivo.sparqldlapi.Query;
-import de.derivo.sparqldlapi.QueryEngine;
-import de.derivo.sparqldlapi.QueryResult;
-import de.derivo.sparqldlapi.exceptions.QueryEngineException;
-import de.derivo.sparqldlapi.exceptions.QueryParserException;
-import android.support.v7.app.ActionBarActivity;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -33,9 +25,15 @@ import android.content.IntentFilter;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
+import de.derivo.sparqldlapi.Query;
+import de.derivo.sparqldlapi.QueryEngine;
+import de.derivo.sparqldlapi.QueryResult;
+import de.derivo.sparqldlapi.exceptions.QueryEngineException;
+import de.derivo.sparqldlapi.exceptions.QueryParserException;
 
 public class MainActivity extends ActionBarActivity  {
 	private ProgressDialog progressDialog;
@@ -105,7 +103,7 @@ public class MainActivity extends ActionBarActivity  {
 
         	
     		        try {
-        		        OWLReasoner hermit = null;
+    		        	org.semanticweb.HermiT.Reasoner hermit = null;
     		        	File file = new File("storage/emulated/0/Download/" +ontologyName);
     		        	//IRI ontIRI = IRI.create(file);
     		        	OWLOntologyManager ontManager = OWLManager.createOWLOntologyManager();
@@ -113,12 +111,11 @@ public class MainActivity extends ActionBarActivity  {
     					try {
     						
 	    				    start();
-
+	    				    
+  
     		    			ont = ontManager.loadOntologyFromOntologyDocument(IRI.create(file));
-    		    			
-    		    			StructuralReasonerFactory factory = new StructuralReasonerFactory();
-    		    			hermit = factory.createReasoner(ont);
-    		    			hermit.precomputeInferences(InferenceType.CLASS_ASSERTIONS,InferenceType.OBJECT_PROPERTY_ASSERTIONS);
+    		    			hermit = new Reasoner(ont);//factory.createReasoner(ont);
+    		    			//hermit.precomputeInferences(InferenceType.CLASS_ASSERTIONS,InferenceType.OBJECT_PROPERTY_ASSERTIONS);
     		    			
     		    		} catch (OWLOntologyCreationException e) {
     		    			// TODO Auto-generated catch block
@@ -139,27 +136,62 @@ public class MainActivity extends ActionBarActivity  {
     			    		        QueryEngine queryEng = QueryEngine.create(ontManager, hermit);
     			    		        Query query = Query.create(
     			    		        		 "SELECT * WHERE { "
-    			    		        		//+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateStudent>)"
-    			    		        		//+ "Class(?X)"		
     			    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateStudent>), PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse>, <http://www.Department0.University0.edu/GraduateCourse0>)"
-    			    		        		//+"Type(?X, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#GraduateStudent>),PropertyValue(?X,<http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#takesCourse>,<http://www.Department0.University0.edu/GraduateCourse0>)"
-    			    		        		//+ " Type(?X, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#Person>), PropertyValue(?X, ?Y, <http://www.Department0.University0.edu>), SubPropertyOf(?Y, <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#memberOf>)"
     			    		        		+ "}");
-    			    		        //"Type(?X, http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#Person), PropertyValue(?X, ?Y, http://www.Department0.University0.edu), SubPropertyOf(?Y, http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#memberOf)"
-    			    	    		OntologyLoaderDrained = drained;
+    			    		        Query query1 = Query.create(
+    			    		        		 "SELECT * WHERE { "
+    			    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Publication>), PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#publicationAuthor>, <http://www.Department0.University0.edu/AssistantProfessor0>)"
+    			    		        		+ "}");
+    			    		        Query query5 = Query.create(
+   			    		        		 "SELECT * WHERE { "
+   			    		        		+"Class(?x)"
+   			    		        		+ "}");
+    			    		        
+    			    		        Query query2 = Query.create(
+    			    		        		 "SELECT * WHERE { "
+    			    		        		/**+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateStudent>)"
+    			    		        		+ "} OR WHERE{"
+    			    		        		+ "Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#UndergraduateStudent>)}"*/
+    			    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Student>)"
+    			    		        		+ "}");
+    			    		        
+    			    		        Query[] queries = new Query[]{query, query1, query2};
+			    		   	 		System.out.println(queries.length);
 
-    			    		        QueryResult result = queryEng.execute(query);
-    						    	System.out.println( result);
-    					    		Reasonerdrained = drained - OntologyLoaderDrained;
+			    		   	 		boolean NOTmeasured = true;
+			    		   	 		float PrewReasonerDrained = 0;
+    			    		   	 	for(int i= 0; i<queries.length; i++){
+    			    		   	 		Query queryString = queries[i];
+    			    		   	 		String temp = queryString.toString();
+	    			    		   	 		
+    			    		   	 		//records how much loader drained of a battery
 
-    					    		System.out.println("There was " + OntologyLoaderDrained + "mAh" + " drained by ontology loader");
-    					    		System.out.println("There was " + Reasonerdrained + "mAh" + " drained by reasoner");
-    					    		System.out.println("Running : " + ontologyName);
-    					    		write("log", "________________________________________"+ "\n"+"HermiT Reasoner " +Reasonerdrained+"mAh"+"\n"
-    					    		+ "HermiT ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "HermiT Total: " +drained+ "\n"
-    					    		+"HermiT Running : " + ontologyName+"\n________________________");
+    			    		   			if(NOTmeasured){
+    			    		   				//records how much loader drained of a battery
+    			    		   				OntologyLoaderDrained = drained;
+    			    		   				write("ontLoader", OntologyLoaderDrained +"\n");
+    			    		   				NOTmeasured = false;
+    			    		   			}
+    			    		   			
+	    			    		        QueryResult result = queryEng.execute(queryString);
+	    						    	System.out.println( result);
+	    						    	
+	    						    	//records how much reasoner drained.
+	    								Reasonerdrained = drained - OntologyLoaderDrained- PrewReasonerDrained;
+	    								//keeps record of previous reasoner
+	    								PrewReasonerDrained = PrewReasonerDrained + Reasonerdrained;
+	    								
+	    					    		System.out.println("There was " + OntologyLoaderDrained + "mAh" + " drained by ontology loader");
+	    					    		System.out.println("There was " + Reasonerdrained + "mAh" + " drained by reasoner");
+	    					    		System.out.println("Running : " + ontologyName);
+	    					    		write("log", "________________________________________\n"+"Query "+ i +  "\n"+"HermiT Reasoner " +Reasonerdrained+"mAh"+"\n"
+	    					    		+ "HermiT ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "HermiT Total: " +drained+"mAh" +"\n"
+	    					    		+"HermiT Running : " + ontologyName+"\n________________________");
+	    					    		write("justdata", "\n"+Reasonerdrained +"\n");
 
-    				    			
+	    				    			
+    			    		   	 	}
+    			    				write("ontLoader", "\n");
 
 
     			    		    } catch (QueryParserException ex) {
@@ -184,8 +216,9 @@ public class MainActivity extends ActionBarActivity  {
     		
     		
     	
-        	
+    		        
         	return null;
+        	
         }
  
         @Override
@@ -200,7 +233,6 @@ public class MainActivity extends ActionBarActivity  {
 	
 
 public  float bat(){		
-    registerReceiver(this.batteryInfoReceiver,	new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
     batteryInfoReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {			
@@ -225,6 +257,8 @@ public  float bat(){
 
 		}
 	};
+    registerReceiver(this.batteryInfoReceiver,	new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+
 	return draw;
 }
 
@@ -239,6 +273,8 @@ public void start() {
            // draw = draw + (bat());
         	float curret =bat(); 
         	drained =drained +(curret/64000);
+        	unregisterReceiver(batteryInfoReceiver);
+
             		//System.out.println("Current mA = " + curret + "mA"+ "\n"+
 					//"Capacity Drained = " + drained + "mAh"+ "\n");
 					
