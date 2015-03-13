@@ -140,14 +140,9 @@ public class MainActivity extends ActionBarActivity  {
     			    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateStudent>), PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse>, <http://www.Department0.University0.edu/GraduateCourse0>)"
     			    		        		+ "}");
     			    		        Query query1 = Query.create(
-    			    		        		"SELECT * WHERE { " 		
-    			   		    		        	 + "Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Student>), "
-    			   		    		        	 + "Type(?Y, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Faculty>), "
-    			   		    		        	 + "Type(?Z, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Course>), "
-    			   		    		        	 + "PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#advisor>, ?Y), "
-    			   		    		        	 + "PropertyValue(?Y, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#teacherOf>, ?Z), "
-    			   		    		        	 + "PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse>, ?Z) "
-    			   		    		        	 + "}");
+    			    		        		 "SELECT * WHERE { "
+    		    			    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Student>), PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse>, <http://www.Department0.University0.edu/GraduateCourse0>)"
+    		    			    		        		+ "}");
     			    		        
     			    		        Query query2 = Query.create(
     			    		        		"SELECT * WHERE { " 		
@@ -181,7 +176,6 @@ public class MainActivity extends ActionBarActivity  {
     			    		   			stopCountingTime = System.currentTimeMillis()-startCountingTime;	
 	    			    				float timeElapsed2 = stopCountingTime;
 	    			    				float timeElapsed = timeElapsed2/1000;	    			    				//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
-	    			    	    		write("Times", "Hermit loader :" +timeElapsed + "s");
 	    			    	    		startCountingTime= System.currentTimeMillis();
     			    		   			
 	    			    		        QueryResult result = queryEng.execute(queryString);
@@ -208,7 +202,7 @@ public class MainActivity extends ActionBarActivity  {
     			    				stopCountingTime = System.currentTimeMillis()-startCountingTime;	
     			    				float timeElapsed2 = stopCountingTime;
     			    				float timeElapsed = timeElapsed2/1000;	    			    				//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
-    			    	    		write("Times", "Hermit loader :" +timeElapsed + "s");    			    				//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
+    			    	    		write("Times", "Hermit Reasoner :" +timeElapsed + "s");    			    				//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
 
     			    		    } catch (QueryParserException ex) {
     			    		        //return ex.getMessage();
@@ -286,7 +280,7 @@ public class MainActivity extends ActionBarActivity  {
 		        		    		+"HermiT Running : " + ontologyName+"\n Time Elapsed: "+timeElapsed+"s"+"\n________________________");
 		        		    		write("justdata", "\n"+Reasonerdrained +"\n");
 		        		    		write("Results", "\n"+"NO RESULTS " +"\n");
-
+		        		            progressDialog.dismiss();
 		        		    		stop();
 		        		            finishWithResult();
 		        		            finish();		   
