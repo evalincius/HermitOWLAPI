@@ -276,7 +276,7 @@ public class MainActivity extends ActionBarActivity  {
 	    timer.schedule(new TimerTask() {
 	        public void run() {	            
 	        	float curret =bat(); 
-	        	drained =drained +(curret/64000);
+	        	drained =drained +(curret/3300);
 	        	runOnUiThread(new Runnable() {
 
 	        	    @Override
@@ -287,7 +287,7 @@ public class MainActivity extends ActionBarActivity  {
 		        		((TextView)findViewById(R.id.textView)).setText("Capacity Drained = " + drained + "mAh \n"+
 	    				"Time Elapsed: "+timeElapsed+"s");
 		        		//This if ABORTS the reasoning task because it took too long,
-		        		if(timeElapsed>900||drained>60){
+		        		if(timeElapsed>900||drained>45){
 		        			quiteAnApp();
 
 		        		}
@@ -295,7 +295,7 @@ public class MainActivity extends ActionBarActivity  {
 	        	 });
 	        	
 	       }
-	   }, 0, 50 );
+	   }, 0, 1000);
 	}
 	public void stop() {
 		timer.cancel();
@@ -375,7 +375,8 @@ public class MainActivity extends ActionBarActivity  {
 		            progressDialog.dismiss();
 		    		stop();
 		            finishWithResult();
-		            finish();		   
+		            finish();	
+		            System.exit(0);
 	   }
 
 }
