@@ -28,6 +28,7 @@ import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.WindowManager;
 import android.widget.TextView;
 import de.derivo.sparqldlapi.Query;
 import de.derivo.sparqldlapi.QueryEngine;
@@ -40,18 +41,26 @@ public class MainActivity extends ActionBarActivity  {
 	
 	private Timer timer;
 	private float draw;
-	private float drained;
+	private float drained,timeElapsed;
 	private float Reasonerdrained;
-	private BroadcastReceiver batteryInfoReceiver;
-	private String ontologyName;
+	private String ontologyName, queryName;
 	private float OntologyLoaderDrained;
+	private long startCountingTime;
+	private long stopCountingTime;
+	
+	private BroadcastReceiver batteryInfoReceiver;
+	private int mvoltage;
+	private float watts;
+	private float ReasonerdrainedWatts;
+	private float OntologyLoaderDrainedWatts;
 
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		
+	    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
 		// instantiate new progress dialog
 		progressDialog = new ProgressDialog(this); 
 		// spinner (wheel) style dialog
@@ -65,7 +74,7 @@ public class MainActivity extends ActionBarActivity  {
 		
 		Intent myIntent = getIntent(); // gets the previously created intent
 		ontologyName = myIntent.getStringExtra("ontologyName"); // will return "ontologyName"
-		 
+		queryName = myIntent.getStringExtra("queryName"); // will return "queryName"
 		// start async task
 		new MyAsyncTaskClass().execute();   
 		
@@ -111,7 +120,9 @@ public class MainActivity extends ActionBarActivity  {
     					try {
     						
 	    				    start();
-	    				    
+	    		    		getVoltage();
+	    					startCountingTime = System.currentTimeMillis();
+
   
     		    			ont = ontManager.loadOntologyFromOntologyDocument(IRI.create(file));
     		    			hermit = new Reasoner(ont);//factory.createReasoner(ont);
@@ -132,67 +143,97 @@ public class MainActivity extends ActionBarActivity  {
     		    		
     		    			 try {
     		    				 
-
+    		    				 
     			    		        QueryEngine queryEng = QueryEngine.create(ontManager, hermit);
+
     			    		        Query query = Query.create(
     			    		        		 "SELECT * WHERE { "
     			    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateStudent>), PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse>, <http://www.Department0.University0.edu/GraduateCourse0>)"
     			    		        		+ "}");
     			    		        Query query1 = Query.create(
     			    		        		 "SELECT * WHERE { "
-    			    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Publication>), PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#publicationAuthor>, <http://www.Department0.University0.edu/AssistantProfessor0>)"
-    			    		        		+ "}");
-    			    		        Query query5 = Query.create(
-   			    		        		 "SELECT * WHERE { "
-   			    		        		+"Class(?x)"
-   			    		        		+ "}");
+    		    			    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Student>), PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse>, <http://www.Department0.University0.edu/GraduateCourse0>)"
+    		    			    		        		+ "}");
     			    		        
     			    		        Query query2 = Query.create(
-    			    		        		 "SELECT * WHERE { "
-    			    		        		/**+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateStudent>)"
-    			    		        		+ "} OR WHERE{"
-    			    		        		+ "Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#UndergraduateStudent>)}"*/
-    			    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Student>)"
-    			    		        		+ "}");
-    			    		        
-    			    		        Query[] queries = new Query[]{query, query1, query2};
-			    		   	 		System.out.println(queries.length);
+    			    		        		"SELECT * WHERE { " 		
+       			   		    		        	 + "Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Student>) "
+       			   		    		        	 //+ "SubClassOf(?x,?y)"
+       			   		    		        	 + "}");
+    			    		        Query query3 = Query.create(
+    			    		        		"SELECT * WHERE { " 		
+       			   		    		        	// + "Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Student>) "
+       			   		    		        	 + "SubClassOf(?x,?y)"
+       			   		    		        	 + "}");
+    			    		        Query[] queries = null;
+    			    		        if(queryName.equals("Query1")){
+    			    		        	queries = new Query[]{query};
+    			    		        }
+    			    		        if(queryName.equals("Query2")){
+    			    		        	queries = new Query[]{query1};
+    			    		        }
+    			    		        if(queryName.equals("Query3")){
+    			    		        	queries = new Query[]{query2};
+    			    		        }
+    			    		        if(queryName.equals("Query4")){
+    			    		        	queries = new Query[]{query3};
+    			    		        }
 
 			    		   	 		boolean NOTmeasured = true;
 			    		   	 		float PrewReasonerDrained = 0;
+			    		   	 		float PrewReasonerDrainedWatts = 0;
     			    		   	 	for(int i= 0; i<queries.length; i++){
-    			    		   	 		Query queryString = queries[i];
-    			    		   	 		String temp = queryString.toString();
-	    			    		   	 		
-    			    		   	 		//records how much loader drained of a battery
+    			    		   	 		try{
+	    			    		   	 		Query queryString = queries[i];
+	    			    		   	 		String temp = queryString.toString();
+		    			    		   	 		
+	    			    		   	 		//records how much loader drained of a battery
+	
+	    			    		   			if(NOTmeasured){
+	    			    		   				//records how much loader drained of a battery
+	    			    		   				OntologyLoaderDrained = drained;
+	    			    		   				OntologyLoaderDrainedWatts = watts;	
+	    			    		   				write("ontLoader",""+ OntologyLoaderDrained);
+	    			    		   				write("PowerLoader",""+ OntologyLoaderDrainedWatts);
+	    			    		   				NOTmeasured = false;
+	    			    		   			}
+	    			    		   			stopCountingTime = System.currentTimeMillis()-startCountingTime;	
+	    			    					float timeElapsed2 = stopCountingTime;
+	    			    					timeElapsed = timeElapsed2/1000;
+	    			    					write("LoaderTime", "" +timeElapsed );
+	    			    		    		startCountingTime= System.currentTimeMillis();
+	    			    		   			
+		    			    		        QueryResult result = queryEng.execute(queryString);
+		    						    	System.out.println( result);
+		    						    	
+		    						    	//records how much mAh reasoner drained.
+		    								Reasonerdrained = drained - OntologyLoaderDrained- PrewReasonerDrained;
+		    								//records how much watts reasoner drained
+		    								ReasonerdrainedWatts = watts - OntologyLoaderDrainedWatts- PrewReasonerDrainedWatts;
 
-    			    		   			if(NOTmeasured){
-    			    		   				//records how much loader drained of a battery
-    			    		   				OntologyLoaderDrained = drained;
-    			    		   				write("ontLoader", OntologyLoaderDrained +"\n");
-    			    		   				NOTmeasured = false;
-    			    		   			}
-    			    		   			
-	    			    		        QueryResult result = queryEng.execute(queryString);
-	    						    	System.out.println( result);
-	    						    	
-	    						    	//records how much reasoner drained.
-	    								Reasonerdrained = drained - OntologyLoaderDrained- PrewReasonerDrained;
-	    								//keeps record of previous reasoner
-	    								PrewReasonerDrained = PrewReasonerDrained + Reasonerdrained;
-	    								
-	    					    		System.out.println("There was " + OntologyLoaderDrained + "mAh" + " drained by ontology loader");
-	    					    		System.out.println("There was " + Reasonerdrained + "mAh" + " drained by reasoner");
-	    					    		System.out.println("Running : " + ontologyName);
-	    					    		write("log", "________________________________________\n"+"Query "+ i +  "\n"+"HermiT Reasoner " +Reasonerdrained+"mAh"+"\n"
-	    					    		+ "HermiT ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "HermiT Total: " +drained+"mAh" +"\n"
-	    					    		+"HermiT Running : " + ontologyName+"\n________________________");
-	    					    		write("justdata", "\n"+Reasonerdrained +"\n");
+		    								//keeps record of previous reasoner
+		    								PrewReasonerDrained = PrewReasonerDrained + Reasonerdrained;
+		    								PrewReasonerDrainedWatts = PrewReasonerDrainedWatts + ReasonerdrainedWatts;
+		    								
+		    					    		System.out.println("There was " + OntologyLoaderDrained + "mAh" + " drained by ontology loader");
+		    					    		System.out.println("There was " + Reasonerdrained + "mAh" + " drained by reasoner");
+		    					    		System.out.println("Running : " + ontologyName);
+		    					    		write("log", "________________________________________\n"+"Query: "+ queryName +  "\n"+"HermiT Reasoner " +Reasonerdrained+"mAh"+"\n"
+		    					    		+ "HermiT ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "HermiT Total: " +drained+"mAh" +"\n"
+		    					    		+"HermiT Running : " + ontologyName+"\n Time Elapsed: "+timeElapsed+"s\n"+"WattsDrained"+watts+"W"+"\n________________________");
+		    					    		write("justdata", ""+Reasonerdrained );
+		    					    		write("PowerReasoner", ""+ ReasonerdrainedWatts);
+		    					    		write("Results", ""+result );
 
-	    				    			
+	    			    	    		} catch (OutOfMemoryError E) {
+	    			    					System.err.println(E);
+	    			    					quiteAnApp();
+	    			    	    		}
     			    		   	 	}
-    			    				write("ontLoader", "\n");
-
+    			    				stopCountingTime = System.currentTimeMillis()-startCountingTime;	
+    			    				float timeElapsed2 = stopCountingTime;
+    			    				float timeElapsed = timeElapsed2/1000;	    			    				//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
+    			    	    		write("ReasonerTime", "" +timeElapsed);    			    				//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
 
     			    		    } catch (QueryParserException ex) {
     			    		        //return ex.getMessage();
@@ -221,73 +262,70 @@ public class MainActivity extends ActionBarActivity  {
         	
         }
  
-        @Override
-        protected void onPostExecute(Void result) {
+  @Override
+  protected void onPostExecute(Void result) {
             // put here everything that needs to be done after your async task finishes
             progressDialog.dismiss();
             stop();
             finishWithResult();
-			System.exit(0);
-        }
-}
+            finish();
+            System.exit(0);        }
+	}
 	
 
-public  float bat(){		
-    batteryInfoReceiver = new BroadcastReceiver() {
-		@Override
-		public void onReceive(Context context, Intent intent) {			
-			int  plugged= intent.getIntExtra(BatteryManager.EXTRA_PLUGGED,0);
-			String  technology= intent.getExtras().getString(BatteryManager.EXTRA_TECHNOLOGY);
-			int  temperature= intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE,0);
-			int  voltage= intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE,0);				
+	public  float bat(){		
+		
+				BatteryManager mBatteryManager =
+						(BatteryManager)getSystemService(Context.BATTERY_SERVICE);
+						Long energy =
+						mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);					
+				float currentdraw = energy;
+				draw = currentdraw;		
 			
-			BatteryManager mBatteryManager =
-					(BatteryManager)getSystemService(Context.BATTERY_SERVICE);
-					Long energy =
-					mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);					
-			float currentdraw = energy;
-			draw = currentdraw;		
-			((TextView)findViewById(R.id.textView)).setText("     HERMIT REASONER "+"\n"+"Plugged: "+plugged+"\n"+
-					"Technology: "+technology+"\n"+
-					"Temperature: "+temperature+"\n"+
-					"Voltage: "+voltage+"\n"+
-					"Current mA = " + energy + "mA"+ "\n"+
-					"Hermit reasoner Drained = " + Reasonerdrained + "mA"+ "\n"+
-					"Currentlly Drained = " + drained + "mAh"+ "\n");
-
-		}
-	};
-    registerReceiver(this.batteryInfoReceiver,	new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-
-	return draw;
-}
+				return draw;
+	}
 
 
-public void start() {
-    if(timer != null) {
-        return;
-    }
-    timer = new Timer();	   
-    timer.schedule(new TimerTask() {
-        public void run() {	            
-           // draw = draw + (bat());
-        	float curret =bat(); 
-        	drained =drained +(curret/64000);
-        	unregisterReceiver(batteryInfoReceiver);
+	public void start() {
+	    if(timer != null) {
+	        return;
+	    }
+	    timer = new Timer();	   
+	    timer.schedule(new TimerTask() {
+	        public void run() {	            
+	        	final float curret =bat();
+	        	drained =drained +(curret/3300);//3300s instead 3600s because after calculations there 
+	        	//were some error rate determined and diviation from 3300 covers the loss of data that
+	        	//was missed to be recorded. Calculated by measuring amount of current drained per 1% and finding 
+	        	//the constant that derives 31mah
+	        	watts = (float) ((drained*mvoltage/1000)*3.6);
+	        	runOnUiThread(new Runnable() {
 
-            		//System.out.println("Current mA = " + curret + "mA"+ "\n"+
-					//"Capacity Drained = " + drained + "mAh"+ "\n");
-					
-    		//batteryInfo=(TextView)findViewById(R.id.textView);
+	        	    @Override
+	        	    public void run() {
+	        	    	stopCountingTime = System.currentTimeMillis()-startCountingTime;	
+	    				float timeElapsed = (float) (stopCountingTime/1000.0);	
+	    				((TextView)findViewById(R.id.textView)).setText("Capacity Drained = " + drained + "mAh \n"+ 
+			        			"Time elapsed : " +timeElapsed + "s\n"+"Voltage: "+mvoltage+"V"
+			        					+ "\nPower used: "+watts+"W");
+		        		//This if ABORTS the reasoning task because it took too long,
+		        		if(timeElapsed>300||drained>45){
+		        			quiteAnApp();
+		        		}
+	        	    }
+	        	 });
+	        	
+	       }
+	   }, 0, 1000);
+	}
+	public void stop() {
+		timer.cancel();
+		timer = null;
+	}
 
-       }
-   }, 0, 50 );
-}
-public void stop() {
-    timer.cancel();
-    timer = null;
-}
-	
+
+
+
 //File writter
 	public void write(String fname, String fcontent){
       String filename= "storage/emulated/0/Download/"+fname+".txt";
@@ -312,7 +350,7 @@ public void stop() {
           } catch (Exception e) {
           }
       }
- }
+	}
 	
 	//File reader
 	   public String read(String fname){
@@ -334,14 +372,43 @@ public void stop() {
 	      return response;
 	   }
 	   
-	   private void finishWithResult()
-	   {
+	   private void finishWithResult(){
+		   
 	      Bundle conData = new Bundle();
 	      conData.putInt("results", 1);
 	      Intent intent = new Intent();
 	      intent.putExtras(conData);
 	      setResult(RESULT_OK, intent);
-	      finish();
 	   }
+	   
+	   public void quiteAnApp(){
+		   
+		   Reasonerdrained = drained-OntologyLoaderDrained;
+		   ReasonerdrainedWatts = watts-OntologyLoaderDrainedWatts;
+		   stopCountingTime = System.currentTimeMillis()-startCountingTime;	
+		   float timeElapsed = (float) (stopCountingTime/1000.0);	
+			write("log", "ABORTED due to Out Of Memory/Time \n"+"________________________________________\n"+"Query: "+ queryName + "\n"+"HermiT Reasoner " +Reasonerdrained+"mAh"+"\n"
+		    		+ "HermiT ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "HermiT Total: " +drained+"mAh"+ "\n"
+		    		+"HermiT Running : " + ontologyName+"\n Time Elapsed: "+timeElapsed+"s\n"+"WattsDrained"+watts+"W"+"\n________________________");
+		    		write("justdata", ""+Reasonerdrained );
+		    		write("PowerReasoner", ""+ ReasonerdrainedWatts);
+		    		write("Results", "Results Aborted " );
+					write("ReasonerTime", "" +timeElapsed );
+		            progressDialog.dismiss();
+		    		stop();
+		            finishWithResult();
+		            finish();	
+		            System.exit(0);
+	   }
+	   
+	   public void getVoltage(){
+	       batteryInfoReceiver = new BroadcastReceiver() {
+				@Override
+				public void onReceive(Context context, Intent intent) {			
+					mvoltage= intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE,0);				
+				}
+			};
+			registerReceiver(this.batteryInfoReceiver,	new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+		}
 
 }
