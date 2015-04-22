@@ -28,8 +28,6 @@ import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager;
@@ -42,10 +40,18 @@ import de.derivo.sparqldlapi.QueryEngine;
 import de.derivo.sparqldlapi.QueryResult;
 import de.derivo.sparqldlapi.exceptions.QueryEngineException;
 import de.derivo.sparqldlapi.exceptions.QueryParserException;
-
+/**
+ * Class MainActivity extends the Activity class and its purpose
+ * is to create the HermiT reasoner which is capable to perform the tasks
+ * it has been assigned. It also is capable of Measuring the power it drained
+ * as well as record the results into different files.
+ * 
+ * @author  Edgaras Valincius
+ * @version 1.0
+ * @since   2015-02-03 
+ */
 public class MainActivity extends ActionBarActivity  {
-	private ProgressDialog progressDialog;
-	
+	private ProgressDialog progressDialog;	
 	private Timer timer;
 	private float draw;
 	private float drained,timeElapsed;
@@ -53,15 +59,18 @@ public class MainActivity extends ActionBarActivity  {
 	private String datasetFileName, queryName, ontologyName;
 	private float OntologyLoaderDrained;
 	private long startCountingTime;
-	private long stopCountingTime;
-	
+	private long stopCountingTime;	
 	private BroadcastReceiver batteryInfoReceiver;
 	private int mvoltage;
 	private float watts;
 	private float ReasonerdrainedWatts;
 	private float OntologyLoaderDrainedWatts;
 
-
+	/**
+	 * onCreate is used to initialize activity. 
+	 * This method launches the AsyncTask class that allows
+	 * to use background operations.Method also gets the extras from the intent.
+	 */ 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -73,8 +82,12 @@ public class MainActivity extends ActionBarActivity  {
 		datasetFileName = myIntent.getStringExtra("ontologyFile"); // will return the name of ontology file
 		queryName = myIntent.getStringExtra("queryName"); // will return "queryName"
 		ontologyName = myIntent.getStringExtra("ontologyName"); //returns the name of ontology size
+		// Checks if the app was launched from the PowerBenchMark app.
+		// If not, is closed. 
 		if(datasetFileName==null){
-			System.out.println("CLOSED. Dataset Empty");           
+			System.out.println("CLOSED. Dataset Empty"); 
+			// Thread is used to hold the activity, before closing it, so
+			// the Toast have enough time to show its message.
     		Thread thread = new Thread(){
                 @Override
                public void run() {
@@ -118,230 +131,198 @@ public class MainActivity extends ActionBarActivity  {
 	
 	public void setText(String a){
 		TextView batteryInfo=(TextView)findViewById(R.id.textView);
-		 batteryInfo.setText("Results: " + a.toString());
-		
+		batteryInfo.setText("Results: " + a.toString());		
 	}
-
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.main, menu);
-		return true;
-	}
-
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		// Handle action bar item clicks here. The action bar will
-		// automatically handle clicks on the Home/Up button, so long
-		// as you specify a parent activity in AndroidManifest.xml.
-		int id = item.getItemId();
-		if (id == R.id.action_settings) {
-			return true;
-		}
-		return super.onOptionsItemSelected(item);
-	}
-	
-	private class MyAsyncTaskClass extends AsyncTask<Void, Void, Void> {
-		 
+	/**
+	 * Creates Asynchronous tasks on one same UI thread. 
+	 * In this case progress wheel and the calculations are performed 
+	 * asynchronously.
+	 */
+	private class MyAsyncTaskClass extends AsyncTask<Void, Void, Void> {	
+		/**
+		 * Method performs a computation on a background thread.
+		 */
         @Override
         protected Void doInBackground(Void... params) {
+	        try {        	
+	        	org.semanticweb.HermiT.Reasoner hermit = null;
+	        	File file = new File("storage/emulated/0/Download/" +datasetFileName);
+	    		OWLOntologyManager ontManager = OWLManager.createOWLOntologyManager();
+	    		OWLOntology ont = null;
+	    		try {    
+	    			//Starts timer that calculates the mAh drained
+				    start();
+		    		//calls method to start inspecting voltage.
+		    		getVoltage();
+					startCountingTime = System.currentTimeMillis();
+	    			ont = ontManager.loadOntologyFromOntologyDocument(IRI.create(file));
+	    			hermit = new Reasoner(ont);//factory.createReasoner(ont);	    			
+	    		} catch (OWLOntologyCreationException e) {
+	    			e.printStackTrace();
+	    		}
+	    		if(ont!=null){
+	    			 try {
+    				 	QueryEngine queryEng = QueryEngine.create(ontManager, hermit);	
+    				 	Query query = Query.create(
+	    		        		 "SELECT * WHERE { "
+	    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateStudent>), PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse>, <http://www.Department0.University0.edu/GraduateCourse0>)"
+	    		        		+ "}");
+	    		        Query query1 = Query.create(
+	    		        		 "SELECT * WHERE { "
+    			    		     +"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Student>), PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse>, <http://www.Department0.University0.edu/GraduateCourse0>)"
+    			    		     + "}");   		        
+	    		        Query query2 = Query.create(
+	    		        		"SELECT * WHERE { " 		
+   		    		        	 + "Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Student>) "
+   		    		        	 + "}");
+	    		        Query query3 = Query.create(
+	    		        		"SELECT * WHERE { " 		
+   		    		        	 + "SubClassOf(?x,?y)"
+   		    		        	 + "}");
+	    		        Query[] queries = null;
+	    		        if(queryName.equals("Instance Retrieval")){
+	    		        	queries = new Query[]{query};
+	    		        }
+	    		        if(queryName.equals("Inference & Instance Retrieval")){
+	    		        	queries = new Query[]{query1};
+	    		        }
+	    		        if(queryName.equals("Inference")){
+	    		        	queries = new Query[]{query2};
+	    		        }
+	    		        if(queryName.equals("Classification")){
+	    		        	queries = new Query[]{query3};
+	    		        }
 
-        	
-    		        try {
-    		        	
-    		        	org.semanticweb.HermiT.Reasoner hermit = null;
-    		        	File file = new File("storage/emulated/0/Download/" +datasetFileName);
-    		        	//IRI ontIRI = IRI.create(file);
-    		        	OWLOntologyManager ontManager = OWLManager.createOWLOntologyManager();
-    		    		OWLOntology ont = null;
-    					try {
-    						
-	    				    start();
-	    		    		getVoltage();
-	    					startCountingTime = System.currentTimeMillis();
+    		   	 		boolean NOTmeasured = true;
+    		   	 		float PrewReasonerDrained = 0;
+    		   	 		float PrewReasonerDrainedWatts = 0;
+	    		   	 	for(int i= 0; i<queries.length; i++){
+	    		   	 		try{
+		    		   	 		Query queryString = queries[i];
+		    		   	 		//records how much loader drained of a battery
+		    		   			if(NOTmeasured){
+		    		   				//records how much loader drained of a battery
+		    		   				OntologyLoaderDrained = drained;
+		    		   				OntologyLoaderDrainedWatts = watts;	
+		    		   				write("ontLoader",""+ OntologyLoaderDrained);
+		    		   				write("PowerLoader",""+ OntologyLoaderDrainedWatts);
+		    		   				NOTmeasured = false;
+		    		   			}
+		    		   			stopCountingTime = System.currentTimeMillis()-startCountingTime;	
+		    					float timeElapsed2 = stopCountingTime;
+		    					timeElapsed = timeElapsed2/1000;
+		    					write("LoaderTime", "" +timeElapsed );
+		    		    		startCountingTime= System.currentTimeMillis();
+		    		   			
+			    		        QueryResult result = queryEng.execute(queryString);
+						    	System.out.println( result);
+						    	
+						    	//records how much mAh reasoner drained.
+								Reasonerdrained = drained - OntologyLoaderDrained- PrewReasonerDrained;
+								//records how much watts reasoner drained
+								ReasonerdrainedWatts = watts - OntologyLoaderDrainedWatts- PrewReasonerDrainedWatts;
 
-  
-    		    			ont = ontManager.loadOntologyFromOntologyDocument(IRI.create(file));
-    		    			hermit = new Reasoner(ont);//factory.createReasoner(ont);
-    		    			//hermit.precomputeInferences(InferenceType.CLASS_ASSERTIONS,InferenceType.OBJECT_PROPERTY_ASSERTIONS);
-    		    			
-    		    		} catch (OWLOntologyCreationException e) {
-    		    			e.printStackTrace();
-    		    		}
-    		    		if(ont!=null){
-    		    			
-    		    		
-    		    			 try {
-    		    				 
-    		    				 
-    			    		        QueryEngine queryEng = QueryEngine.create(ontManager, hermit);
+								//keeps record of previous reasoner
+								PrewReasonerDrained = PrewReasonerDrained + Reasonerdrained;
+								PrewReasonerDrainedWatts = PrewReasonerDrainedWatts + ReasonerdrainedWatts;
 
-    			    		        Query query = Query.create(
-    			    		        		 "SELECT * WHERE { "
-    			    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#GraduateStudent>), PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse>, <http://www.Department0.University0.edu/GraduateCourse0>)"
-    			    		        		+ "}");
-    			    		        Query query1 = Query.create(
-    			    		        		 "SELECT * WHERE { "
-    		    			    		        		+"Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Student>), PropertyValue(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#takesCourse>, <http://www.Department0.University0.edu/GraduateCourse0>)"
-    		    			    		        		+ "}");
-    			    		        
-    			    		        Query query2 = Query.create(
-    			    		        		"SELECT * WHERE { " 		
-       			   		    		        	 + "Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Student>) "
-       			   		    		        	 //+ "SubClassOf(?x,?y)"
-       			   		    		        	 + "}");
-    			    		        Query query3 = Query.create(
-    			    		        		"SELECT * WHERE { " 		
-       			   		    		        	// + "Type(?X, <http://swat.cse.lehigh.edu/onto/univ-bench.owl#Student>) "
-       			   		    		        	 + "SubClassOf(?x,?y)"
-       			   		    		        	 + "}");
-    			    		        Query[] queries = null;
-    			    		        if(queryName.equals("Instance Retrieval")){
-    			    		        	queries = new Query[]{query};
-    			    		        }
-    			    		        if(queryName.equals("Inference & Instance Retrieval")){
-    			    		        	queries = new Query[]{query1};
-    			    		        }
-    			    		        if(queryName.equals("Inference")){
-    			    		        	queries = new Query[]{query2};
-    			    		        }
-    			    		        if(queryName.equals("Classification")){
-    			    		        	queries = new Query[]{query3};
-    			    		        }
+								write("log", "________________________________________\n"
+							    		+"HERMIT REASONER:\n"
+							    		+"Reasoning task: "+ queryName + "  \n"
+							    		+ "Ontology size : " + ontologyName+ "\n"
+							    		+"Reasoning task drained: " +Reasonerdrained+"mAh"+"\n"
+							    		+ "Ontology loader drained: " + OntologyLoaderDrained +"mAh"+"\n" 
+							    		+ "HermiT drained total: " +drained+"mAh"+ "\n"
+							    		+ "Time elapsed: "+timeElapsed+"s\n"
+							    		+ "Power consumed: "+watts+"W"
+							    		+"\n________________________");
+					    		write("justdata", ""+Reasonerdrained );
+					    		write("PowerReasoner", ""+ ReasonerdrainedWatts);
+					    		write("Results", ""+result );
 
-			    		   	 		boolean NOTmeasured = true;
-			    		   	 		float PrewReasonerDrained = 0;
-			    		   	 		float PrewReasonerDrainedWatts = 0;
-    			    		   	 	for(int i= 0; i<queries.length; i++){
-    			    		   	 		try{
-	    			    		   	 		Query queryString = queries[i];
-		    			    		   	 		
-	    			    		   	 		//records how much loader drained of a battery
-	
-	    			    		   			if(NOTmeasured){
-	    			    		   				//records how much loader drained of a battery
-	    			    		   				OntologyLoaderDrained = drained;
-	    			    		   				OntologyLoaderDrainedWatts = watts;	
-	    			    		   				write("ontLoader",""+ OntologyLoaderDrained);
-	    			    		   				write("PowerLoader",""+ OntologyLoaderDrainedWatts);
-	    			    		   				NOTmeasured = false;
-	    			    		   			}
-	    			    		   			stopCountingTime = System.currentTimeMillis()-startCountingTime;	
-	    			    					float timeElapsed2 = stopCountingTime;
-	    			    					timeElapsed = timeElapsed2/1000;
-	    			    					write("LoaderTime", "" +timeElapsed );
-	    			    		    		startCountingTime= System.currentTimeMillis();
-	    			    		   			
-		    			    		        QueryResult result = queryEng.execute(queryString);
-		    						    	System.out.println( result);
-		    						    	
-		    						    	//records how much mAh reasoner drained.
-		    								Reasonerdrained = drained - OntologyLoaderDrained- PrewReasonerDrained;
-		    								//records how much watts reasoner drained
-		    								ReasonerdrainedWatts = watts - OntologyLoaderDrainedWatts- PrewReasonerDrainedWatts;
-
-		    								//keeps record of previous reasoner
-		    								PrewReasonerDrained = PrewReasonerDrained + Reasonerdrained;
-		    								PrewReasonerDrainedWatts = PrewReasonerDrainedWatts + ReasonerdrainedWatts;
-		    								
-		    					    		//System.out.println("There was " + OntologyLoaderDrained + "mAh" + " drained by ontology loader");
-		    					    		//System.out.println("There was " + Reasonerdrained + "mAh" + " drained by reasoner");
-		    					    		//System.out.println("Running : " + ontologyName);
-		    					    		
-		    								
-		    								
-		    								
-		    								write("log", "________________________________________\n"
-		    							    		+"HERMIT REASONER:\n"
-		    							    		+"Reasoning task: "+ queryName + "  \n"
-		    							    		+ "Ontology size : " + ontologyName+ "\n"
-		    							    		+"Reasoning task drained: " +Reasonerdrained+"mAh"+"\n"
-		    							    		+ "Ontology loader drained: " + OntologyLoaderDrained +"mAh"+"\n" 
-		    							    		+ "HermiT drained total: " +drained+"mAh"+ "\n"
-		    							    		+ "Time elapsed: "+timeElapsed+"s\n"
-		    							    		+ "Power consumed: "+watts+"W"
-		    							    		+"\n________________________");
-		    					    		write("justdata", ""+Reasonerdrained );
-		    					    		write("PowerReasoner", ""+ ReasonerdrainedWatts);
-		    					    		write("Results", ""+result );
-
-	    			    	    		} catch (OutOfMemoryError E) {
-	    			    					System.err.println(E);
-	    			    					quiteAnApp(1);
-	    			    	    		}
-    			    		   	 	}
-    			    				stopCountingTime = System.currentTimeMillis()-startCountingTime;	
-    			    				float timeElapsed2 = stopCountingTime;
-    			    				float timeElapsed = timeElapsed2/1000;	    			    				//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
-    			    	    		write("ReasonerTime", "" +timeElapsed);    			    				//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
-
-    			    		    } catch (QueryParserException ex) {
-    			    		        //return ex.getMessage();
-
-    			    		    } catch (QueryEngineException ex) {
-    			    		        ex.getMessage();
-    			    		    }
-    			    		
-    			    		
-    			    		
-    		    		}else{
-    		    			
-    		    			System.out.println("---------->  DOESN'T WORK <-------------");
-    		    		}
-    		    		
-    		        	
-    		        	
-    		    		
-    		    		} catch (Exception e) {
-    		            e.printStackTrace();
-    		        }
-    		        
-    		       
-    		    
-    		
-    		
-    	
-    		        
-        	return null;
-        	
+		    	    		} catch (OutOfMemoryError E) {
+		    					System.err.println(E);
+		    					quiteAnApp(1);
+		    	    		}
+	    		   	 	}
+	    				stopCountingTime = System.currentTimeMillis()-startCountingTime;	
+	    				float timeElapsed2 = stopCountingTime;
+	    				float timeElapsed = timeElapsed2/1000;
+	    	    		write("ReasonerTime", "" +timeElapsed);
+		    		    } catch (QueryParserException ex) {	
+		    		    } catch (QueryEngineException ex) {
+		    		        ex.getMessage();
+		    		    }		    		
+	    		}else{
+	    			// do Nothing
+	    		}
+	    		
+	    	} catch (Exception e) {
+	            e.printStackTrace();
+	    	}
+	        return null;       	
         }
- 
-  @Override
-  protected void onPostExecute(Void result) {
-            // put here everything that needs to be done after your async task finishes
+        /**
+    	 * Runs on the UI thread after doInBackground.
+    	 */
+        @Override
+        protected void onPostExecute(Void result) {
             progressDialog.dismiss();
             stop();
             finishWithResult(1);
             finish();
-            System.exit(0);        }
+            System.exit(0);        
+        }
 	}
 	
-
-	public  float bat(){		
-		
-				BatteryManager mBatteryManager =
-						(BatteryManager)getSystemService(Context.BATTERY_SERVICE);
-						Long energy =
-						mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);					
-				float currentdraw = energy;
-				draw = currentdraw;		
-			
-				return draw;
+	/**
+	 * Battery method bat() reads the battery 
+	 * information and return the current flow of the battery.	             
+	 * @return float draw that is current in mA flowing from the 
+	 * battery at the moment.	 
+	 */
+	public  float bat(){				
+		BatteryManager mBatteryManager =(BatteryManager)getSystemService(Context.BATTERY_SERVICE);
+		Long energy =mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);					
+		float currentdraw = energy;
+		draw = currentdraw;		
+		return draw;
 	}
 
-
+	/**
+	* Starts timer that registers current flow in mA of battery
+	* and transforms it to mAh.
+	*/	
 	public void start() {
 	    if(timer != null) {
 	        return;
 	    }
 	    timer = new Timer();	   
 	    timer.schedule(new TimerTask() {
+	    	/**
+	    	* Timer calls method run every second. 
+	    	* Within run, power consumption is calculated.
+	    	* Method invokes
+	    	*/	
 	        public void run() {	            
 	        	final float curret =bat();
-	        	drained =drained +(curret/3300);//3300s instead 3600s because after calculations there 
-	        	//were some error rate determined and diviation from 3300 covers the loss of data that
-	        	//was missed to be recorded. Calculated by measuring amount of current drained per 1% and finding 
-	        	//the constant that derives 31mah
+	        	
+	        	/**
+		    	* 3300s instead 3600s because after calculations there 
+		    	* were some error rate determined and divided from 3300 covers the loss of data that
+		    	* was missed to be recorded. Calculated by measuring amount of current drained per 1% and finding 
+		    	* the constant that derives 31mah.
+		    	*/	
+	        	
+	        	drained =drained +(curret/3300);
+	        	
+	        	/**
+		    	* Watts drained were calculated by following formula W=I*V
+		    	* (watt= current * voltage). Since voltage was measured in miliVolts, the equation had to
+		    	* be divided from 1000 to get the SI units. In case below, it was also multiplied by time,
+		    	* so was converted back to Watts instead of watt/hours.
+		    	*/
+	        	
 	        	watts = (float) ((drained*mvoltage/1000)*3.6);
 	        	runOnUiThread(new Runnable() {
 
@@ -360,11 +341,14 @@ public class MainActivity extends ActionBarActivity  {
 		        			quiteAnApp(1);
 		        		}
 	        	    }
-	        	 });
-	        	
+	        	 });	        	
 	       }
 	   }, 0, 1000);
 	}
+	
+	/**
+	*Stops the previously launched Timer.
+	*/
 	public void stop() {
 		if(timer!=null){
 		timer.cancel();
@@ -375,20 +359,20 @@ public class MainActivity extends ActionBarActivity  {
 
 
 
-//File writter
+	/**
+	* File Writer method writes the desired content into the file.
+	* If there is no such a file, generates it.
+	* @param  fname is a name for a file.
+	* @param  fcontent is a content for a file. 
+	*/
 	public void write(String fname, String fcontent){
       String filename= "storage/emulated/0/Download/"+fname+".txt";
       String temp = read(fname);
       BufferedWriter writer = null;
       try {
-          //create a temporary file
           File logFile = new File(filename);
-
-          // This will output the full path where the file will be written to...
           System.out.println(logFile.getCanonicalPath());
-
-          writer = new BufferedWriter(new FileWriter(logFile));
-          
+          writer = new BufferedWriter(new FileWriter(logFile));         
           writer.write(temp + fcontent );
       } catch (Exception e) {
           e.printStackTrace();
@@ -401,8 +385,12 @@ public class MainActivity extends ActionBarActivity  {
       }
 	}
 	
-	//File reader
-	   public String read(String fname){
+	/**
+	* File Reader method reads the content from the file.
+	* @param  fname is a name for a file.
+	* @return  response is a content that is read from the file.
+	*/
+	public String read(String fname){
 	     BufferedReader br = null;
 	     String response = null;
 	      try {
@@ -420,46 +408,56 @@ public class MainActivity extends ActionBarActivity  {
 	        return null;
 	      }
 	      return response;
-	   }
-	   
-	   private void finishWithResult(int a){
+	}
+	/**
+	 * Sends results to intent activity (PowerBenchMark app that was called from) to 
+	 * send the information that it finished its task.
+	 */
+	private void finishWithResult(int a){
 		   
 	      Bundle conData = new Bundle();
 	      conData.putInt("results", a);
 	      Intent intent = new Intent();
 	      intent.putExtras(conData);
 	      setResult(RESULT_OK, intent);
-	   }
-	   
-	   public void quiteAnApp(int a){
-		   
+	}
+	/**
+	 * Closes the app.
+	 * Is called when reasoner encounters an error and is manually called for closing.
+	 * Records the power consumption it drained.
+	 */
+	public void quiteAnApp(int a){	   
 		   Reasonerdrained = drained-OntologyLoaderDrained;
 		   ReasonerdrainedWatts = watts-OntologyLoaderDrainedWatts;
 		   stopCountingTime = System.currentTimeMillis()-startCountingTime;	
 		   float timeElapsed = (float) (stopCountingTime/1000.0);	
-		   			write("log", "________ABORTED____________\n"
-		    		+"HERMIT REASONER:\n"
-		    		+"Reasoning task: "+ queryName + "\n"
-		    		+ "Ontology size : " + ontologyName+ "\n"
-		    		+"Reasoning task drained: " +Reasonerdrained+"mAh"+"\n"
-		    		+ "Ontology loader drained: " + OntologyLoaderDrained +"mAh"+"\n" 
-		    		+ "HermiT drained total: " +drained+"mAh"+ "\n"
-		    		+ "Time elapsed: "+timeElapsed+"s\n"
-		    		+ "Power consumed: "+watts+"W"
-		    		+"\n________________________");
-		   
-		   			write("justdata", ""+Reasonerdrained );
-		    		write("PowerReasoner", ""+ ReasonerdrainedWatts);
-		    		write("Results", "Results Aborted " );
-					write("ReasonerTime", "" +timeElapsed );
-		            progressDialog.dismiss();
-		    		stop();
-		            finishWithResult(a);
-		            finish();	
-		            System.exit(0);
-	   }
-	   
-	   public void getVoltage(){
+			write("log", "________ABORTED____________\n"
+			+"HERMIT REASONER:\n"
+			+"Reasoning task: "+ queryName + "\n"
+			+ "Ontology size : " + ontologyName+ "\n"
+			+"Reasoning task drained: " +Reasonerdrained+"mAh"+"\n"
+			+ "Ontology loader drained: " + OntologyLoaderDrained +"mAh"+"\n" 
+			+ "HermiT drained total: " +drained+"mAh"+ "\n"
+			+ "Time elapsed: "+timeElapsed+"s\n"
+			+ "Power consumed: "+watts+"W"
+			+"\n________________________");
+			   
+			   			write("justdata", ""+Reasonerdrained );
+			write("PowerReasoner", ""+ ReasonerdrainedWatts);
+			write("Results", "Results Aborted " );
+			write("ReasonerTime", "" +timeElapsed );
+			progressDialog.dismiss();
+			stop();
+			finishWithResult(a);
+			finish();	
+			System.exit(0);
+	}
+	/**
+	  * Method records voltage. To do that it has to register the BroadcastReceiver,
+	  * and every time the state of voltage changes, it records the resigns the mvoltage variable
+	  * with the latest voltage measured in miliVolts.
+	  */ 
+	public void getVoltage(){
 	       batteryInfoReceiver = new BroadcastReceiver() {
 				@Override
 				public void onReceive(Context context, Intent intent) {			
@@ -467,52 +465,52 @@ public class MainActivity extends ActionBarActivity  {
 				}
 			};
 			registerReceiver(this.batteryInfoReceiver,	new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-		}
-	   /**
-	    * Method created the pop up dialog asking if user
-	    * wants really quite and application.
-	    */
-	   @Override
-	   public void onBackPressed() {
-	   	 
-	   		final Dialog dialog = new Dialog(this);
-				dialog.setContentView(R.layout.customexit);			
-				dialog.setTitle("HermiT");
-				// set the custom dialog components - text, image and button
-				TextView text = (TextView) dialog.findViewById(R.id.text);
-				text.setText("Are you sure you want");
-				TextView text2 = (TextView) dialog.findViewById(R.id.text2);
-				text2.setText("to CANCEL reasoning?");
-				ImageView image = (ImageView) dialog.findViewById(R.id.image);
-				image.setImageResource(R.drawable.cancel); 
-				Button dialogButton = (Button) dialog.findViewById(R.id.btnok);
-				Button dialogButton2 = (Button) dialog.findViewById(R.id.btncancel);
-				// if button is clicked, close the custom dialog
-				dialogButton.setOnClickListener(new OnClickListener() {
-					@Override
-					public void onClick(View v) {
-						quiteAnApp(-1);
-	             		dialog.dismiss();             		
-					}
-				});
-				
-				dialogButton2.setOnClickListener(new OnClickListener() {
-					@Override
-					public void onClick(View v) {
-						progressDialog.show(); 
-						dialog.dismiss();
-						
-					}
-				});
-				
-				dialog.setOnCancelListener(new OnCancelListener() {
+	}
+	
+	/**
+	 * Method created the pop up dialog asking if user
+	 * wants really quite and application.
+	 */
+	@Override
+	public void onBackPressed() { 	 
+   		final Dialog dialog = new Dialog(this);
+			dialog.setContentView(R.layout.customexit);			
+			dialog.setTitle("HermiT");
+			// set the custom dialog components - text, image and button
+			TextView text = (TextView) dialog.findViewById(R.id.text);
+			text.setText("Are you sure you want");
+			TextView text2 = (TextView) dialog.findViewById(R.id.text2);
+			text2.setText("to CANCEL reasoning?");
+			ImageView image = (ImageView) dialog.findViewById(R.id.image);
+			image.setImageResource(R.drawable.cancel); 
+			Button dialogButton = (Button) dialog.findViewById(R.id.btnok);
+			Button dialogButton2 = (Button) dialog.findViewById(R.id.btncancel);
+			// if button is clicked, close the custom dialog
+			dialogButton.setOnClickListener(new OnClickListener() {
+				@Override
+				public void onClick(View v) {
+					quiteAnApp(-1);
+             		dialog.dismiss();             		
+				}
+			});
+			
+			dialogButton2.setOnClickListener(new OnClickListener() {
+				@Override
+				public void onClick(View v) {
+					progressDialog.show(); 
+					dialog.dismiss();
+					
+				}
+			});
+			
+			dialog.setOnCancelListener(new OnCancelListener() {
 
-			        @Override
-			        public void onCancel(DialogInterface dialog) {
-			    		progressDialog.show(); 
-			        }});
-	 
-				dialog.show();
-	   }
+		        @Override
+		        public void onCancel(DialogInterface dialog) {
+		    		progressDialog.show(); 
+		        }});
+ 
+			dialog.show();
+   }
 
 }
